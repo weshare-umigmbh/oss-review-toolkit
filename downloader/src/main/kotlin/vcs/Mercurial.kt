@@ -24,6 +24,7 @@ import ch.frankel.slf4k.*
 import com.here.ort.downloader.DownloadException
 import com.here.ort.downloader.VersionControlSystem
 import com.here.ort.model.Package
+import com.here.ort.model.VcsInfo
 import com.here.ort.utils.ProcessCapture
 import com.here.ort.utils.getCommandVersion
 import com.here.ort.utils.log
@@ -91,65 +92,41 @@ object Mercurial : VersionControlSystem() {
 
     override fun isApplicableUrl(vcsUrl: String) = ProcessCapture("hg", "identify", vcsUrl).isSuccess()
 
-    override fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
-                          recursive: Boolean): WorkingTree {
-        log.info { "Using $this version ${getVersion()}." }
+    override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
+        // We cannot detect beforehand if the Large Files extension would be required, so enable it by default.
+        val extensionsList = mutableListOf(EXTENSION_LARGE_FILES)
 
-        try {
-            // We cannot detect beforehand if the Large Files extension would be required, so enable it by default.
-            val extensionsList = mutableListOf(EXTENSION_LARGE_FILES)
+        if (vcs.path.isNotBlank() && isAtLeastVersion("4.3")) {
+            // Starting with version 4.3 Mercurial has experimental built-in support for sparse checkouts, see
+            // https://www.mercurial-scm.org/wiki/WhatsNew#Mercurial_4.3_.2F_4.3.1_.282017-08-10.29
+            extensionsList.add(EXTENSION_SPARSE)
+        }
 
-            if (pkg.vcsProcessed.path.isNotBlank() && isAtLeastVersion("4.3")) {
-                // Starting with version 4.3 Mercurial has experimental built-in support for sparse checkouts, see
-                // https://www.mercurial-scm.org/wiki/WhatsNew#Mercurial_4.3_.2F_4.3.1_.282017-08-10.29
-                extensionsList.add(EXTENSION_SPARSE)
-            }
-
-            run(targetDir, "init")
-            File(targetDir, ".hg/hgrc").writeText("""
+        run(targetDir, "init")
+        File(targetDir, ".hg/hgrc").writeText("""
                 [paths]
-                default = ${pkg.vcsProcessed.url}
+                default = ${vcs.url}
                 [extensions]
 
                 """.trimIndent() + extensionsList.joinToString(separator = "\n"))
 
-            if (extensionsList.contains(EXTENSION_SPARSE)) {
-                log.info { "Configuring Mercurial to do sparse checkout of path '${pkg.vcsProcessed.path}'." }
-                run(targetDir, "debugsparse", "-I", "${pkg.vcsProcessed.path}/**",
-                        "-I", "LICENSE*", "-I", "LICENCE*")
-            }
-
-            val workingTree = getWorkingTree(targetDir)
-
-            val revision = if (allowMovingRevisions || isFixedRevision(pkg.vcsProcessed.revision)) {
-                pkg.vcsProcessed.revision
-            } else {
-                log.info { "Trying to guess a $this revision for version '${pkg.id.version}'." }
-                try {
-                    workingTree.guessRevisionName(pkg.id.name, pkg.id.version).also { revision ->
-                        log.warn {
-                            "Using guessed $this revision '$revision' for version '${pkg.id.version}'. This might " +
-                                    "cause the downloaded source code to not match the package version."
-                        }
-                    }
-                } catch (e: IOException) {
-                    throw IOException("Unable to determine a revision to checkout.", e)
-                }
-            }
-
-            // To safe network bandwidth, only pull exactly the revision we want. Do not use "-u" to update the
-            // working tree just yet, as Mercurial would only update if new changesets were pulled. But that might
-            // not be the case if the requested revision is already available locally.
-            run(targetDir, "pull", "-r", revision)
-
-            // Explicitly update the working tree to the desired revision.
-            run(targetDir, "update", revision)
-
-            return workingTree
-        } catch (e: IOException) {
-            e.showStackTrace()
-
-            throw DownloadException("$this failed to download from URL '${pkg.vcsProcessed.url}'.", e)
+        if (extensionsList.contains(EXTENSION_SPARSE)) {
+            log.info { "Configuring Mercurial to do sparse checkout of path '${vcs.path}'." }
+            run(targetDir, "debugsparse", "-I", "${vcs.path}/**", "-I", "LICENSE*", "-I", "LICENCE*")
         }
+
+        return getWorkingTree(targetDir)
+    }
+
+    override fun updateWorkingTree(workingTree: WorkingTree, revision: String, recursive: Boolean) {
+        // To safe network bandwidth, only pull exactly the revision we want. Do not use "-u" to update the
+        // working tree just yet, as Mercurial would only update if new changesets were pulled. But that might
+        // not be the case if the requested revision is already available locally.
+        run(workingTree.workingDir, "pull", "-r", revision)
+
+        // Explicitly update the working tree to the desired revision.
+        run(workingTree.workingDir, "update", revision)
+
+        // TODO: Implement updating of subrepositories.
     }
 }

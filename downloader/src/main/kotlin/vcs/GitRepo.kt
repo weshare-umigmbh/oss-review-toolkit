@@ -23,6 +23,7 @@ import ch.frankel.slf4k.*
 
 import com.here.ort.downloader.DownloadException
 import com.here.ort.model.Package
+import com.here.ort.model.VcsInfo
 import com.here.ort.utils.ProcessCapture
 import com.here.ort.utils.log
 import com.here.ort.utils.searchUpwardsForSubdirectory
@@ -69,28 +70,23 @@ object GitRepo : GitBase() {
      *
      * @throws DownloadException In case the download failed.
      */
-    override fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
-                          recursive: Boolean): WorkingTree {
-        val revision = pkg.vcsProcessed.revision.takeUnless { it.isBlank() } ?: "master"
-        val manifestPath = pkg.vcsProcessed.path.takeUnless { it.isBlank() } ?: "manifest.xml"
+    override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
+        val revision = vcs.revision.takeUnless { it.isBlank() } ?: "master"
+        val manifestPath = vcs.path.takeUnless { it.isBlank() } ?: "manifest.xml"
 
-        try {
-            log.info {
-                "Initializing git-repo from ${pkg.vcsProcessed.url} with revision '$revision' " +
-                        "and manifest '$manifestPath'."
-            }
-            runRepoCommand(targetDir, "init", "--depth", HISTORY_DEPTH.toString(), "-b", revision,
-                    "-u", pkg.vcsProcessed.url, "-m", manifestPath)
-
-            log.info { "Starting git-repo sync." }
-            runRepoCommand(targetDir, "sync", "-c")
-
-            return getWorkingTree(targetDir)
-        } catch (e: IOException) {
-            e.showStackTrace()
-
-            throw DownloadException("Could not clone from ${pkg.vcsProcessed.url} using manifest '$manifestPath'.", e)
+        log.info {
+            "Initializing git-repo from ${vcs.url} with revision '$revision' and manifest '$manifestPath'."
         }
+        runRepoCommand(targetDir, "init", "--depth", HISTORY_DEPTH.toString(), "-b", revision,
+                "-u", vcs.url, "-m", manifestPath)
+
+        return getWorkingTree(targetDir)
+    }
+
+    override fun updateWorkingTree(workingTree: WorkingTree, revision: String,
+                                   @Suppress("UNUSED_PARAMETER") recursive: Boolean) {
+        log.info { "Starting git-repo sync." }
+        runRepoCommand(workingTree.workingDir, "sync", "-c")
     }
 
     private fun runRepoCommand(targetDir: File, vararg args: String) {

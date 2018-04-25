@@ -24,6 +24,7 @@ import ch.frankel.slf4k.*
 import com.here.ort.downloader.DownloadException
 import com.here.ort.downloader.VersionControlSystem
 import com.here.ort.model.Package
+import com.here.ort.model.VcsInfo
 import com.here.ort.utils.ProcessCapture
 import com.here.ort.utils.getCommandVersion
 import com.here.ort.utils.log
@@ -143,18 +144,29 @@ object Cvs : VersionControlSystem() {
 
     override fun isApplicableUrl(vcsUrl: String) = vcsUrl.matches("^:(ext|pserver):[^@]+@.+$".toRegex())
 
-    override fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
-                          recursive: Boolean): WorkingTree {
+    override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
+        // Create a "fake" checkout as described at https://stackoverflow.com/a/3448891/1127485.
+        run(targetDir, "-z3", "-d", vcs.url, "checkout", "-l", ".")
+        return getWorkingTree(targetDir)
+    }
+
+    override fun updateWorkingTree(workingTree: WorkingTree, revision: String, recursive: Boolean) {
+        // Checkout the working tree of the desired revision.
+        //val path = vcs.path.takeUnless { it.isBlank() } ?: "."
+        //run(workingTree.workingDir, "checkout", "-r", revision, path)
+    }
+
+    fun download_old(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
+                     @Suppress("UNUSED_PARAMETER") recursive: Boolean): WorkingTree {
         log.info { "Using $this version ${getVersion()}." }
 
         try {
-            val path = pkg.vcsProcessed.path.takeUnless { it.isBlank() } ?: "."
 
             // Create a "fake" checkout as described at https://stackoverflow.com/a/3448891/1127485.
             run(targetDir, "-z3", "-d", pkg.vcsProcessed.url, "checkout", "-l", ".")
             val workingTree = getWorkingTree(targetDir)
 
-            val revision = if (allowMovingRevisions || isFixedRevision(pkg.vcsProcessed.revision)) {
+            val revision = if (allowMovingRevisions /*|| isFixedRevision(pkg.vcsProcessed.revision)*/) {
                 pkg.vcsProcessed.revision
             } else {
                 // Create all working tree directories in order to be able to query the log.
@@ -183,8 +195,6 @@ object Cvs : VersionControlSystem() {
                 }
             }
 
-            // Checkout the working tree of the desired revision.
-            run(targetDir, "checkout", "-r", revision, path)
 
             return workingTree
         } catch (e: IOException) {

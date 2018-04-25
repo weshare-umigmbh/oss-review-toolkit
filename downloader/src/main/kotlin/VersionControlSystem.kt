@@ -29,6 +29,7 @@ import com.here.ort.utils.filterVersionNames
 import com.here.ort.utils.getPathFromEnvironment
 import com.here.ort.utils.log
 import com.here.ort.utils.normalizedPath
+import com.here.ort.utils.showStackTrace
 
 import com.vdurmont.semver4j.Semver
 
@@ -306,13 +307,66 @@ abstract class VersionControlSystem {
      *
      * @throws DownloadException In case the download failed.
      */
-    abstract fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean = false,
-                          recursive: Boolean = true): WorkingTree
+    fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean = false, recursive: Boolean = true)
+            : WorkingTree {
+        log.info { "Using $this version ${getVersion()}." }
 
-    /**
-     * Check whether the given [revision] is likely to name a fixed revision that does not move.
-     */
-    fun isFixedRevision(revision: String) = revision.isNotBlank() && revision !in movingRevisionNames
+        val workingTree = try {
+            initWorkingTree(targetDir, pkg.vcsProcessed)
+        } catch (e: IOException) {
+            throw DownloadException("Failed to initialize $this working tree at '$targetDir'.", e)
+        }
+
+        // E.g. for NPM packages is it sometimes the case that the "gitHead" from the registry points to a non-fetchable
+        // commit, but the repository still has a tag for the package version (pointing to a different commit). In order
+        // to allow to fall back to the guessed revision based on the version in such cases, use a prioritized list of
+        // revision candidates instead of a single revision.
+        val revisionCandidates = mutableListOf<String>()
+
+        pkg.vcsProcessed.revision.also {
+            if (it.isNotBlank() && (it !in movingRevisionNames || allowMovingRevisions)) {
+                log.info {
+                    "Adding $this revision '$it' (taken from package meta-data) as a candidates."
+                }
+                revisionCandidates.add(it)
+            }
+        }
+
+        try {
+            workingTree.guessRevisionName(pkg.id.name, pkg.id.version).also {
+                log.info {
+                    "Adding $this revision '$it' (guessed from version '${pkg.id.version}') as a candidate."
+                }
+                revisionCandidates.add(it)
+            }
+        } catch (e: IOException) {
+            log.info { "No $this revision for version '${pkg.id.version}' found: ${e.message}" }
+        }
+
+        if (revisionCandidates.isEmpty()) {
+            throw IOException("Unable to determine a revision to checkout.")
+        }
+
+        val workingTreeRevision = revisionCandidates.find { revision ->
+            try {
+                updateWorkingTree(workingTree, revision, recursive)
+                true
+            } catch (e: IOException) {
+                e.showStackTrace()
+                false
+            }
+        }
+
+        if (workingTreeRevision == null || workingTreeRevision != workingTree.getRevision()) {
+            throw DownloadException("$this failed to download from URL '${pkg.vcsProcessed.url}'.")
+        }
+
+        return workingTree
+    }
+
+    abstract fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree
+
+    abstract fun updateWorkingTree(workingTree: WorkingTree, revision: String, recursive: Boolean)
 
     /**
      * Check whether the VCS tool is at least of the specified [expectedVersion], e.g. to check for features.

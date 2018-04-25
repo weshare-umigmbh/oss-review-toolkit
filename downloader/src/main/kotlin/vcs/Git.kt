@@ -24,6 +24,7 @@ import ch.frankel.slf4k.*
 import com.here.ort.downloader.DownloadException
 import com.here.ort.downloader.VersionControlSystem
 import com.here.ort.model.Package
+import com.here.ort.model.VcsInfo
 import com.here.ort.utils.OS
 import com.here.ort.utils.log
 import com.here.ort.utils.ProcessCapture
@@ -97,86 +98,45 @@ object Git : GitBase() {
 
     override fun isApplicableUrl(vcsUrl: String) = ProcessCapture("git", "ls-remote", vcsUrl).isSuccess()
 
-    override fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
-                          recursive: Boolean): WorkingTree {
-        log.info { "Using $this version ${getVersion()}." }
-
-        try {
-            return createWorkingTree(pkg, targetDir, allowMovingRevisions).also {
-                if (recursive && File(targetDir, ".gitmodules").isFile) {
-                    run(targetDir, "submodule", "update", "--init", "--recursive")
-                }
-            }
-        } catch (e: IOException) {
-            e.showStackTrace()
-
-            throw DownloadException("$this failed to download from URL '${pkg.vcsProcessed.url}'.", e)
-        }
-    }
-
-    private fun createWorkingTree(pkg: Package, targetDir: File, allowMovingRevisions: Boolean): WorkingTree {
+    override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
         // Do not use "git clone" to have more control over what is being fetched.
         run(targetDir, "init")
-        run(targetDir, "remote", "add", "origin", pkg.vcsProcessed.url)
+        run(targetDir, "remote", "add", "origin", vcs.url)
 
         if (OS.isWindows) {
             run(targetDir, "config", "core.longpaths", "true")
         }
 
-        if (pkg.vcsProcessed.path.isNotBlank()) {
-            log.info { "Configuring Git to do sparse checkout of path '${pkg.vcsProcessed.path}'." }
+        if (vcs.path.isNotBlank()) {
+            log.info { "Configuring Git to do sparse checkout of path '${vcs.path}'." }
             run(targetDir, "config", "core.sparseCheckout", "true")
             val gitInfoDir = File(targetDir, ".git/info").apply { safeMkdirs() }
-            File(gitInfoDir, "sparse-checkout").writeText(pkg.vcsProcessed.path +
-                    "\nLICENSE*\nLICENCE*")
+            File(gitInfoDir, "sparse-checkout").writeText(vcs.path + "\nLICENSE*\nLICENCE*")
         }
 
-        val workingTree = getWorkingTree(targetDir)
+        return getWorkingTree(targetDir)
+    }
 
-        val revisionCandidates = mutableListOf<String>()
-
-        if (allowMovingRevisions || isFixedRevision(pkg.vcsProcessed.revision)) {
-            revisionCandidates.add(pkg.vcsProcessed.revision)
-        } else {
-            log.warn {
-                "No valid revision specified. Other possible candidates might cause the downloaded source code " +
-                        "to not match the package version."
-            }
-        }
-
-        log.info { "Trying to guess a $this revision for version '${pkg.id.version}' to fall back to." }
-        try {
-            workingTree.guessRevisionName(pkg.id.name, pkg.id.version).also { revision ->
-                revisionCandidates.add(revision)
-                log.info { "Found $this revision '$revision' for version '${pkg.id.version}'." }
-            }
-        } catch (e: IOException) {
-            log.info { "No $this revision for version '${pkg.id.version}' found: ${e.message}" }
-        }
-
-        val revision = revisionCandidates.firstOrNull()
-                ?: throw IOException("Unable to determine a revision to checkout.")
-
+    override fun updateWorkingTree(workingTree: WorkingTree, revision: String, recursive: Boolean) {
         // To safe network bandwidth, first try to only fetch exactly the revision we want. Skip this optimization for
         // SSH URLs to GitHub as GitHub does not have "allowReachableSHA1InWant" (nor "allowAnySHA1InWant") enabled and
         // the SSH transport invokes "git-upload-pack" without the "--stateless-rpc" option, causing different
         // reachability rules to kick in. Over HTTPS, the ref advertisement and the want/have negotiation happen over
         // two separate connections so the later actually does a reachability check instead of relying on the advertised
         // refs.
-        if (!pkg.vcsProcessed.url.startsWith("ssh://git@github.com/")) {
+        if (!workingTree.getRemoteUrl().startsWith("ssh://git@github.com/")) {
             try {
                 log.info { "Trying to fetch only revision '$revision' with depth limited to $HISTORY_DEPTH." }
-                run(targetDir, "fetch", "--depth", HISTORY_DEPTH.toString(), "origin", revision)
+                run(workingTree.workingDir, "fetch", "--depth", HISTORY_DEPTH.toString(), "origin", revision)
 
                 // The documentation for git-fetch states that "By default, any tag that points into the histories being
                 // fetched is also fetched", but that is not true for shallow fetches of a tag; then the tag itself is
                 // not fetched. So create it manually afterwards.
                 if (revision in workingTree.listRemoteTags()) {
-                    run(targetDir, "tag", revision, "FETCH_HEAD")
+                    run(workingTree.workingDir, "tag", revision, "FETCH_HEAD")
                 }
 
-                run(targetDir, "checkout", revision)
-                return workingTree
+                run(workingTree.workingDir, "checkout", revision)
             } catch (e: IOException) {
                 e.showStackTrace()
 
@@ -190,9 +150,8 @@ object Git : GitBase() {
         // Fall back to fetching all refs with limited depth of history.
         try {
             log.info { "Trying to fetch all refs with depth limited to $HISTORY_DEPTH." }
-            run(targetDir, "fetch", "--depth", HISTORY_DEPTH.toString(), "--tags", "origin")
-            run(targetDir, "checkout", revision)
-            return workingTree
+            run(workingTree.workingDir, "fetch", "--depth", HISTORY_DEPTH.toString(), "--tags", "origin")
+            run(workingTree.workingDir, "checkout", revision)
         } catch (e: IOException) {
             e.showStackTrace()
 
@@ -206,24 +165,11 @@ object Git : GitBase() {
         log.info { "Trying to fetch everything including tags." }
 
         if (workingTree.isShallow()) {
-            run(targetDir, "fetch", "--unshallow", "--tags", "origin")
+            run(workingTree.workingDir, "fetch", "--unshallow", "--tags", "origin")
         } else {
-            run(targetDir, "fetch", "--tags", "origin")
+            run(workingTree.workingDir, "fetch", "--tags", "origin")
         }
 
-        revisionCandidates.find { candidate ->
-            try {
-                run(targetDir, "checkout", candidate)
-                true
-            } catch (e: IOException) {
-                e.showStackTrace()
-
-                log.info { "Failed to checkout revision '$candidate'. Trying next candidate, if any." }
-
-                false
-            }
-        } ?: throw IOException("Unable to determine a revision to checkout.")
-
-        return workingTree
+        run(workingTree.workingDir, "checkout", revision)
     }
 }

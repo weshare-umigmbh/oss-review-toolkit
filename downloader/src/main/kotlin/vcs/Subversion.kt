@@ -29,6 +29,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import com.here.ort.downloader.DownloadException
 import com.here.ort.downloader.VersionControlSystem
 import com.here.ort.model.Package
+import com.here.ort.model.VcsInfo
 import com.here.ort.model.xmlMapper
 import com.here.ort.utils.ProcessCapture
 import com.here.ort.utils.getCommandVersion
@@ -160,8 +161,16 @@ object Subversion : VersionControlSystem() {
     override fun isApplicableUrl(vcsUrl: String) =
             vcsUrl.startsWith("svn+") || ProcessCapture("svn", "list", vcsUrl).isSuccess()
 
-    override fun download(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
-                          recursive: Boolean): WorkingTree {
+    override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
+        return getWorkingTree(targetDir)
+    }
+
+    override fun updateWorkingTree(workingTree: WorkingTree, revision: String, recursive: Boolean) {
+
+    }
+
+    fun download_old(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
+                     @Suppress("UNUSED_PARAMETER") recursive: Boolean): WorkingTree {
         log.info { "Using $this version ${getVersion()}." }
 
         try {
@@ -170,7 +179,7 @@ object Subversion : VersionControlSystem() {
 
             var revision = pkg.vcsProcessed.revision.takeIf { it.isNotBlank() } ?: "HEAD"
 
-            return if (allowMovingRevisions || isFixedRevision(revision)) {
+            return if (allowMovingRevisions /*|| isFixedRevision(revision)*/) {
                 if (pkg.vcsProcessed.path.isBlank()) {
                     // Deepen everything as we do not know whether the revision is contained in branches, tags or trunk.
                     run(targetDir, "update", "-r", revision, "--set-depth", "infinity")
