@@ -162,6 +162,8 @@ object Subversion : VersionControlSystem() {
             vcsUrl.startsWith("svn+") || ProcessCapture("svn", "list", vcsUrl).isSuccess()
 
     override fun initWorkingTree(targetDir: File, vcs: VcsInfo): WorkingTree {
+        // Create an empty working tree of the latest revision to allow sparse checkouts.
+        run(targetDir, "checkout", vcs.url, "--depth", "empty", ".")
         return getWorkingTree(targetDir)
     }
 
@@ -171,11 +173,7 @@ object Subversion : VersionControlSystem() {
 
     fun download_old(pkg: Package, targetDir: File, allowMovingRevisions: Boolean,
                      @Suppress("UNUSED_PARAMETER") recursive: Boolean): WorkingTree {
-        log.info { "Using $this version ${getVersion()}." }
-
         try {
-            // Create an empty working tree of the latest revision to allow sparse checkouts.
-            run(targetDir, "checkout", pkg.vcsProcessed.url, "--depth", "empty", ".")
 
             var revision = pkg.vcsProcessed.revision.takeIf { it.isNotBlank() } ?: "HEAD"
 

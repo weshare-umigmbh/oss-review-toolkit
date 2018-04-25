@@ -323,6 +323,7 @@ abstract class VersionControlSystem {
         // revision candidates instead of a single revision.
         val revisionCandidates = mutableListOf<String>()
 
+        var revision = pkg.vcsProcessed.revision.takeIf { it.isNotBlank() } ?: "HEAD"
         pkg.vcsProcessed.revision.also {
             if (it.isNotBlank() && (it !in movingRevisionNames || allowMovingRevisions)) {
                 log.info {
