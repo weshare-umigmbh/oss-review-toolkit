@@ -41,6 +41,7 @@ object Mercurial : VersionControlSystem() {
 
     override val aliases = listOf("mercurial", "hg")
     override val commandName = "hg"
+    override val latestRevisionName = "tip"
     override val movingRevisionNames = listOf("tip", "default")
 
     override fun getVersion(): String {

@@ -261,6 +261,11 @@ abstract class VersionControlSystem {
     protected abstract val commandName: String
 
     /**
+     * The name of a symbolic reference to the latest commit.
+     */
+    protected abstract val latestRevisionName: String
+
+    /**
      * A fixed list of named revisions that usually move as new revisions are created.
      */
     protected abstract val movingRevisionNames: List<String>
