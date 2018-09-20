@@ -71,8 +71,6 @@ class Cvs : VersionControlSystem(), CommandLineTool {
                     return ProcessCapture(workingDir, "cvs", "status", "-l").isSuccess
                 }
 
-                override fun isShallow() = false
-
                 override fun getRemoteUrl() = File(cvsDirectory, "Root").useLines { it.first() }
 
                 override fun getRevision() =

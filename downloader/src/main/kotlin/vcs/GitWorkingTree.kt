@@ -34,11 +34,6 @@ open class GitWorkingTree(workingDir: File, private val gitBase: GitBase) : Work
         return isInsideWorkTree.isSuccess && isInsideWorkTree.stdout.trimEnd().toBoolean()
     }
 
-    override fun isShallow(): Boolean {
-        val dotGitDir = gitBase.run(workingDir, "rev-parse", "--absolute-git-dir").stdout.trimEnd()
-        return File(dotGitDir, "shallow").isFile
-    }
-
     override fun getRemoteUrl() = gitBase.run(workingDir, "remote", "get-url", getFirstRemote()).stdout.trimEnd()
 
     override fun getRevision() = gitBase.run(workingDir, "rev-parse", "HEAD").stdout.trimEnd()

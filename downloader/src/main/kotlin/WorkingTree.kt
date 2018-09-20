@@ -42,11 +42,6 @@ abstract class WorkingTree(val workingDir: File, val vcsType: String) {
     abstract fun isValid(): Boolean
 
     /**
-     * Return whether this is a shallow working tree with truncated history.
-     */
-    abstract fun isShallow(): Boolean
-
-    /**
      * Return the clone URL of the associated remote repository.
      */
     abstract fun getRemoteUrl(): String

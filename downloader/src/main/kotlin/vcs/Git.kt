@@ -34,9 +34,6 @@ import com.here.ort.utils.spdx.LICENSE_FILE_NAMES
 import java.io.File
 import java.io.IOException
 
-// TODO: Make this configurable.
-const val GIT_HISTORY_DEPTH = 50
-
 class Git : GitBase() {
     override val aliases = listOf("git")
 
@@ -111,8 +108,8 @@ class Git : GitBase() {
         // refs.
         if (!pkg.vcsProcessed.url.startsWith("ssh://git@github.com/")) {
             try {
-                log.info { "Trying to fetch only revision '$revision' with depth limited to $GIT_HISTORY_DEPTH." }
-                run(targetDir, "fetch", "--depth", GIT_HISTORY_DEPTH.toString(), "origin", revision)
+                log.info { "Trying to fetch only revision '$revision'." }
+                run(targetDir, "fetch", "origin", revision)
 
                 // The documentation for git-fetch states that "By default, any tag that points into the histories being
                 // fetched is also fetched", but that is not true for shallow fetches of a tag; then the tag itself is
@@ -133,29 +130,8 @@ class Git : GitBase() {
             }
         }
 
-        // Fall back to fetching all refs with limited depth of history.
-        try {
-            log.info { "Trying to fetch all refs with depth limited to $GIT_HISTORY_DEPTH." }
-            run(targetDir, "fetch", "--depth", GIT_HISTORY_DEPTH.toString(), "--tags", "origin")
-            run(targetDir, "checkout", revision)
-            return workingTree
-        } catch (e: IOException) {
-            e.showStackTrace()
-
-            log.warn {
-                "Could not fetch with only a depth of $GIT_HISTORY_DEPTH: ${e.message}\n" +
-                        "Falling back to fetching everything."
-            }
-        }
-
         // Fall back to fetching everything.
-        log.info { "Trying to fetch everything including tags." }
-
-        if (workingTree.isShallow()) {
-            run(targetDir, "fetch", "--unshallow", "--tags", "origin")
-        } else {
-            run(targetDir, "fetch", "--tags", "origin")
-        }
+        log.info { "Trying to fetch all refs including tags." }
 
         revisionCandidates.find { candidate ->
             try {

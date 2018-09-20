@@ -122,8 +122,6 @@ class Subversion : VersionControlSystem(), CommandLineTool {
                     return runSvnInfoCommand() != null
                 }
 
-                override fun isShallow() = false
-
                 override fun getRemoteUrl() = runSvnInfoCommand()?.url ?: ""
 
                 override fun getRevision() = runSvnInfoCommand()?.commit?.revision ?: ""
