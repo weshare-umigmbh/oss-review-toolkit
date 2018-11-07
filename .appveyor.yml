@@ -34,6 +34,7 @@ install:
   - npm install -g npm@%NPM_VERSION%
   - npm install -g bower@%BOWER_VERSION% yarn@%YARN_VERSION%
   - pip install virtualenv==%VIRTUAL_ENV_VERSION%
+  - cinst haskell-stack --version 2.1.1 -y
   - cinst sbt --version %SBT_VERSION% -y
   - cinst php --version %PHP_VERSION% -y
   - cinst composer --version %COMPOSER_VERSION% -y # The version refers to the installer, not to Composer.

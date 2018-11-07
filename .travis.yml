@@ -45,6 +45,7 @@ install:
   - phpenv global $PHP_VERSION
   - curl -Ls https://git.io/sbt > ~/bin/sbt
   - chmod a+x ~/bin/sbt
+  - curl -sSL https://github.com/commercialhaskell/stack/raw/v2.1.1/etc/scripts/get-stack.sh | sh
   - curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
   - chmod a+x ~/bin/repo
   - curl -Os https://dl.google.com/android/repository/sdk-tools-linux-$ANDROID_SDK_VERSION.zip
