@@ -46,6 +46,7 @@ install:
   - npm install -g bower@$BOWER_VERSION npm@$NPM_VERSION yarn@$YARN_VERSION # Need to run this before brew to avoid "dyld: Library not loaded".
   - |
     if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      exit;
       sudo apt install -y cvs;
       eval "$(gimme)";
       curl https://raw.githubusercontent.com/golang/dep/v$GO_DEP_VERSION/install.sh | sh;
@@ -54,8 +55,7 @@ install:
       chmod a+x ~/bin/sbt;
     elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
       mkdir ~/bin;
-      PHP_VERSION_MAJOR_MINOR=${PHP_VERSION%.*}
-      brew install php${PHP_VERSION_MAJOR_MINOR//./} sbt; # TODO: CVS, GoDep
+      brew install php${PHP_VERSION//./} sbt; # TODO: CVS, GoDep
     fi
   - curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
   - chmod a+x ~/bin/repo
@@ -66,6 +66,9 @@ install:
   - yes | $ANDROID_HOME/tools/bin/sdkmanager --verbose "platform-tools"
 
 script:
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      exit;
+    fi
   - set -o pipefail
   - if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
       ./gradlew --no-daemon --stacktrace :cli:dockerBuildImage;
