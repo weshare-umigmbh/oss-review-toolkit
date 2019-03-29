@@ -1,0 +1,24 @@
+pool:
+  # https://github.com/Microsoft/azure-pipelines-image-generation/blob/master/images/win/Vs2017-Server2016-Readme.md
+  name: Hosted VS2017
+
+variables:
+  BUNDLER_VERSION: 2.0.1
+
+steps:
+- checkout: self
+  submodules: recursive
+- script: |
+    curl -o "C:\Program Files\Git\cmd\repo" https://storage.googleapis.com/git-repo-downloads/repo
+    gem install bundler -v $(BUNDLER_VERSION)
+  displayName: Install tools required by the analyzer
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: 2.7
+    addToPath: true
+    architecture: x64
+- task: Gradle@2
+  displayName: Build and test with Gradle
+  inputs:
+    options: --no-daemon --stacktrace -Dkotlintest.tags.exclude=ExpensiveTag
+    tasks: check
