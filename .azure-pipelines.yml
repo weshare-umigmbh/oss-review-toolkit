@@ -1,0 +1,8 @@
+trigger: none
+
+steps:
+- task: Gradle@2
+  displayName: Build the installable distribution
+  inputs:
+    options: --no-daemon
+    tasks: installDist
