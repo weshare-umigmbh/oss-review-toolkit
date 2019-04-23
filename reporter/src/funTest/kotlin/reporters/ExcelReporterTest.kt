@@ -35,12 +35,14 @@ import org.apache.poi.ss.usermodel.WorkbookFactory
 
 import org.hamcrest.MatcherAssert.assertThat
 
+fun org.apache.poi.ss.usermodel.Cell.getCellType() {}
+
 class ExcelReporterTest : WordSpec({
     val ortResult = File("../scanner/src/funTest/assets/file-counter-expected-output-for-analyzer-result.yml")
         .readValue<OrtResult>()
 
     "ExcelReporter" should {
-        "successfully export to an Excel sheet".config(enabled = false) {
+        "successfully export to an Excel sheet" {
             val outputStream = ByteArrayOutputStream()
             ExcelReporter().generateReport(ortResult, DefaultResolutionProvider(), CopyrightGarbage(), outputStream)
             val actualWorkbook = WorkbookFactory.create(outputStream.toByteArray().inputStream())
