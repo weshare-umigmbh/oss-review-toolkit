@@ -1,0 +1,4 @@
+FROM ort-build:latest
+
+# Required to run the "test" tasks.
+RUN apk add --no-cache cvs git mercurial subversion
