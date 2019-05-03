@@ -46,7 +46,7 @@ class ScanPathTest : StringSpec() {
     }
 
     init {
-        "Askalono recognizes our own LICENSE".config(tags = setOf(ExpensiveTag)) {
+        /*"Askalono recognizes our own LICENSE".config(tags = setOf(ExpensiveTag)) {
             val scanner = Askalono("Askalono", config)
             val resultsFile = outputDir.resolve("${scanner.scannerName}.${scanner.resultFileExt}")
 
@@ -77,7 +77,7 @@ class ScanPathTest : StringSpec() {
             resultsFile.isFile shouldBe true
             result.summary.fileCount shouldBe 1
             result.summary.licenses shouldBe sortedSetOf("Apache-2.0")
-        }
+        }*/
 
         "ScanCode recognizes our own LICENSE".config(tags = setOf(ExpensiveTag, ScanCodeTag)) {
             val scanner = ScanCode("ScanCode", config)

@@ -5,5 +5,5 @@ SCRIPT_DIR="$(cd "$(dirname $0)" && pwd)"
 
 (cd $SCRIPT_DIR/.. \
     && . docker/lib \
-    && buildAndRun docker/dockerfile-to-funtest-ort ort-funtest:latest funTest \
+    && buildAndRun docker/dockerfile-to-funtest-ort ort-funtest:latest ":scanner:funTest --tests com.here.ort.scanner.scanners.ScanPathTest"
 )
