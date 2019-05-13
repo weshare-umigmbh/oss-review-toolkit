@@ -4,7 +4,16 @@ FROM frolvlad/alpine-java:jdk8.202.08-slim
 # Required to run the "funTest" tasks.
 RUN wget -q -O /usr/local/bin/repo https://storage.googleapis.com/git-repo-downloads/repo \
     && chmod a+x /usr/local/bin/repo
-RUN apk add --no-cache bash dep npm python2 python3 py-pip ruby-bundler ruby-rdoc ruby-rugged \
+RUN apk add --no-cache bash dep npm python2 python3 py-icu py-pip ruby-bundler ruby-rdoc ruby-rugged \
     && npm install -g bower \
-    && gem install licensee \
-    && pip install scancode-toolkit
+    && gem install licensee
+
+# Override PIP's glibc detection, see https://github.com/pypa/pip/issues/3969.
+RUN echo "manylinux1_compatible = True" > /usr/lib/python2.7/_manylinux.py
+RUN pip install scancode-toolkit
+
+#RUN apk add --no-cache git
+#RUN git clone https://github.com/nexB/scancode-toolkit.git \
+#    && cd scancode-toolkit \
+#    && ./configure \
+#    && ./scancode --version
