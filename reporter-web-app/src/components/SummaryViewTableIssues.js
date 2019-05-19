@@ -31,14 +31,15 @@ const SummaryViewTableIssues = (props) => {
     const { data } = props;
     const { errors, violations } = data;
 
-    const renderErrorTable = errorData => (
+    const renderErrorTable = errorsData => (
         <Table
             columns={[
                 {
                     dataIndex: 'severity',
                     filters: (() => [
                         { text: 'Errors', value: 'ERROR' },
-                        { text: 'Warning', value: 'WARNING' }
+                        { text: 'Warnings', value: 'WARNING' },
+                        { text: 'Resolved', value: 'RESOLVED' }
                     ])(),
                     onFilter: (value, record) => record.severity.includes(value),
                     render: (text, row) => (
@@ -78,7 +79,7 @@ const SummaryViewTableIssues = (props) => {
                     )
                 }
             ]}
-            dataSource={errorData}
+            dataSource={errorsData}
             locale={{
                 emptyText: 'No errors'
             }}
@@ -94,18 +95,20 @@ const SummaryViewTableIssues = (props) => {
                 }
             }
             rowKey="key"
+            showHeader={errorsData.length !== 0}
             size="small"
         />
     );
 
-    const renderViolationsTable = violationData => (
+    const renderViolationsTable = violationsData => (
         <Table
             columns={[
                 {
                     dataIndex: 'severity',
                     filters: (() => [
                         { text: 'Errors', value: 'ERROR' },
-                        { text: 'Warning', value: 'WARNING' }
+                        { text: 'Warnings', value: 'WARNING' },
+                        { text: 'Resolved', value: 'RESOLVED' }
                     ])(),
                     onFilter: (value, record) => record.severity.includes(value),
                     render: (text, row) => (
@@ -134,7 +137,7 @@ const SummaryViewTableIssues = (props) => {
                     )
                 }
             ]}
-            dataSource={violationData}
+            dataSource={violationsData}
             locale={{
                 emptyText: 'No violations'
             }}
@@ -150,12 +153,12 @@ const SummaryViewTableIssues = (props) => {
                 }
             }
             rowKey="key"
+            showHeader={violationsData.length !== 0}
             size="small"
         />
     );
 
-    if (errors.totalOpen !== 0 || errors.totalResolved !== 0
-            || violations.totalOpen !== 0 || violations.totalResolved !== 0) {
+    if (errors.totalOpen !== 0 || violations.totalOpen !== 0) {
         return (
             <Tabs tabPosition="top" className="ort-summary-issues">
                 <TabPane
@@ -181,34 +184,6 @@ const SummaryViewTableIssues = (props) => {
                     key="2"
                 >
                     {renderErrorTable(errors.open)}
-                </TabPane>
-                <TabPane
-                    tab={(
-                        <span>
-                            Resolved Violations (
-                            {violations.resolvedTotal}
-                            )
-                        </span>
-                    )}
-                    key="3"
-                >
-                    {
-                        renderViolationsTable(violations.resolved)
-                    }
-                </TabPane>
-                <TabPane
-                    tab={(
-                        <span>
-                            Resolved Errors (
-                            {errors.resolvedTotal}
-                            )
-                        </span>
-                    )}
-                    key="4"
-                >
-                    {
-                        renderErrorTable(errors.resolved)
-                    }
                 </TabPane>
             </Tabs>
         );
