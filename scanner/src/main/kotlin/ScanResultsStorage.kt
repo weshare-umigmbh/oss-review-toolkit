@@ -22,23 +22,18 @@ package com.here.ort.scanner
 import ch.frankel.slf4k.*
 
 import com.here.ort.model.AccessStatistics
-import com.here.ort.model.Identifier
 import com.here.ort.model.Package
 import com.here.ort.model.ScanResult
-import com.here.ort.model.ScanResultContainer
 import com.here.ort.model.ScannerDetails
 import com.here.ort.model.config.ArtifactoryStorageConfiguration
 import com.here.ort.utils.log
 
-import java.util.SortedSet
-
 interface ScanResultsStorage {
     companion object : ScanResultsStorage {
         var storage = object : ScanResultsStorage {
-            override fun read(id: Identifier) = ScanResultContainer(id, emptyList())
-            override fun read(pkg: Package, scannerDetails: ScannerDetails) = ScanResultContainer(pkg.id, emptyList())
-            override fun add(id: Identifier, scanResult: ScanResult) = false
-            override fun listPackages() = sortedSetOf<Identifier>()
+            override fun read(pkg: Package) = emptyList<ScanResult>()
+            override fun read(pkg: Package, scannerDetails: ScannerDetails) = emptyList<ScanResult>()
+            override fun add(scanResult: ScanResult) = false
         }
             private set
 
@@ -62,10 +57,10 @@ interface ScanResultsStorage {
             log.info { "Using Artifactory storage at ${config.url}." }
         }
 
-        override fun read(id: Identifier) =
-            storage.read(id).also {
+        override fun read(pkg: Package) =
+            storage.read(pkg).also {
                 stats.numReads.incrementAndGet()
-                if (it.results.isNotEmpty()) {
+                if (it.isNotEmpty()) {
                     stats.numHits.incrementAndGet()
                 }
             }
@@ -73,51 +68,26 @@ interface ScanResultsStorage {
         override fun read(pkg: Package, scannerDetails: ScannerDetails) =
             storage.read(pkg, scannerDetails).also {
                 stats.numReads.incrementAndGet()
-                if (it.results.isNotEmpty()) {
+                if (it.isNotEmpty()) {
                     stats.numHits.incrementAndGet()
                 }
             }
 
-        override fun add(id: Identifier, scanResult: ScanResult) = storage.add(id, scanResult)
-
-        override fun listPackages() = storage.listPackages()
+        override fun add(scanResult: ScanResult) = storage.add(scanResult)
     }
 
     /**
-     * Read all [ScanResult]s for this [id] from the storage.
-     *
-     * @param id The [Identifier] of the scanned [Package].
-     *
-     * @return The [ScanResultContainer] for this [id].
+     * Read all [ScanResult]s for this [package][pkg] from the storage.
      */
-    fun read(id: Identifier): ScanResultContainer
+    fun read(pkg: Package): List<ScanResult>
 
     /**
-     * Read the [ScanResult]s matching the [id][Package.id] of [pkg] and the [scannerDetails] from the storage.
-     * [ScannerDetails.isCompatible] is used to check if the results are compatible with the provided [scannerDetails].
-     * Also [Package.sourceArtifact], [Package.vcs], and [Package.vcsProcessed] are used to check if the scan result
-     * matches the expected source code location. This is important to find the correct results when different revisions
-     * of a package using the same version name are used (e.g. multiple scans of 1.0-SNAPSHOT during development).
-     *
-     * @param pkg The [Package] to look up results for.
-     * @param scannerDetails Details about the scanner that was used to scan the [Package].
-     *
-     * @return The [ScanResultContainer] matching the [id][Package.id] of [pkg] and the [scannerDetails].
+     * Read all [ScanResult]s for this [package][pkg] with matching [scannerDetails] from the storage.
      */
-    fun read(pkg: Package, scannerDetails: ScannerDetails): ScanResultContainer
+    fun read(pkg: Package, scannerDetails: ScannerDetails): List<ScanResult>
 
     /**
-     * Add a [ScanResult] to the [ScanResultContainer] for this [id] and write it to the storage.
-     *
-     * @param id The [Identifier] of the scanned [Package].
-     * @param scanResult The [ScanResult]. The [ScanResult.rawResult] must not be null.
-     *
-     * @return If the [ScanResult] could be written to the storage.
+     * Add a [scanResult] to the storage.
      */
-    fun add(id: Identifier, scanResult: ScanResult): Boolean
-
-    /**
-     * List the [Identifier]s of all stored packages.
-     */
-    fun listPackages(): SortedSet<Identifier>
+    fun add(scanResult: ScanResult): Boolean
 }

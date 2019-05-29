@@ -20,6 +20,7 @@
 package com.here.ort.model
 
 import com.fasterxml.jackson.annotation.JsonAlias
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonInclude
 
 import java.time.Instant
@@ -59,8 +60,15 @@ data class Provenance(
      */
     @JsonAlias("originalVcsInfo")
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    val originalVcsInfo: VcsInfo? = null
+    val originalVcsInfo: VcsInfo? = vcsInfo
 ) {
+    @JsonIgnore
+    val description = when {
+        sourceArtifact != null -> "$sourceArtifact"
+        vcsInfo != null -> "$vcsInfo"
+        else -> "empty provenance"
+    }
+
     init {
         require(sourceArtifact == null || vcsInfo == null) {
             "Provenance does not allow both 'sourceArtifact' and 'vcsInfo' to be set, otherwise it is ambiguous " +

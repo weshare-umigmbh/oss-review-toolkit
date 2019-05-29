@@ -90,7 +90,7 @@ class HttpStorageTest : StringSpec() {
         id = id,
         sourceArtifact = sourceArtifact,
         vcs = vcs,
-        vcsProcessed = vcs.normalize()
+        vcsProcessed = vcs
     )
     private val pkgWithoutRevision = pkg.copy(vcs = vcsWithoutRevision, vcsProcessed = vcsWithoutRevision.normalize())
 
@@ -167,199 +167,230 @@ class HttpStorageTest : StringSpec() {
         "Scan result can be added to the storage" {
             val storage = createStorage()
             val scanResult = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
 
-            val result = storage.add(id, scanResult)
-            val storedResults = storage.read(id)
+            val result = storage.add(scanResult)
+            val storedResults = storage.read(pkg)
 
             result shouldBe true
-            storedResults.id shouldBe id
-            storedResults.results.size shouldBe 1
-            storedResults.results[0] shouldBe scanResult
+            storedResults.size shouldBe 1
+            storedResults.first() shouldBe scanResult
         }
 
         "Does not add scan result without raw result to storage" {
             val storage = createStorage()
             val scanResult = ScanResult(provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithoutFiles)
 
-            val result = storage.add(id, scanResult)
-            val storedResults = storage.read(id)
+            val result = storage.add(scanResult)
+            val storedResults = storage.read(pkg)
 
             result shouldBe false
-            storedResults.id shouldBe id
-            storedResults.results.size shouldBe 0
+            storedResults.size shouldBe 0
         }
 
         "Does not add scan result with fileCount 0 to storage" {
             val storage = createStorage()
             val scanResult = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithoutFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithoutFiles,
                 rawResultWithContent
             )
 
-            val result = storage.add(id, scanResult)
-            val storedResults = storage.read(id)
+            val result = storage.add(scanResult)
+            val storedResults = storage.read(pkg)
 
             result shouldBe false
-            storedResults.id shouldBe id
-            storedResults.results.size shouldBe 0
+            storedResults.size shouldBe 0
         }
 
         "Does not add scan result without provenance information to storage" {
             val storage = createStorage()
             val scanResult = ScanResult(
-                provenanceEmpty, scannerDetails1, scanSummaryWithFiles,
+                provenanceEmpty,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultEmpty
             )
 
-            val result = storage.add(id, scanResult)
-            val storedResults = storage.read(id)
+            val result = storage.add(scanResult)
+            val storedResults = storage.read(pkg)
 
             result shouldBe false
-            storedResults.id shouldBe id
-            storedResults.results.size shouldBe 0
+            storedResults.size shouldBe 0
         }
 
         "Can retrieve all scan results from storage" {
             val storage = createStorage()
             val scanResult1 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
             val scanResult2 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails2, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails2,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
 
-            val result1 = storage.add(id, scanResult1)
-            val result2 = storage.add(id, scanResult2)
-            val storedResults = storage.read(id)
+            val result1 = storage.add(scanResult1)
+            val result2 = storage.add(scanResult2)
+            val storedResults = storage.read(pkg)
 
             result1 shouldBe true
             result2 shouldBe true
-            storedResults.results.size shouldBe 2
-            storedResults.results should contain(scanResult1)
-            storedResults.results should contain(scanResult2)
+            storedResults.size shouldBe 2
+            storedResults should contain(scanResult1)
+            storedResults should contain(scanResult2)
         }
 
         "Can retrieve all scan results for specific scanner from storage" {
             val storage = createStorage()
             val scanResult1 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
             val scanResult2 = ScanResult(
-                provenanceWithVcsInfo, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithVcsInfo,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
             val scanResult3 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails2, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails2,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
 
-            val result1 = storage.add(id, scanResult1)
-            val result2 = storage.add(id, scanResult2)
-            val result3 = storage.add(id, scanResult3)
+            val result1 = storage.add(scanResult1)
+            val result2 = storage.add(scanResult2)
+            val result3 = storage.add(scanResult3)
             val storedResults = storage.read(pkg, scannerDetails1)
 
             result1 shouldBe true
             result2 shouldBe true
             result3 shouldBe true
-            storedResults.results.size shouldBe 2
-            storedResults.results should contain(scanResult1)
-            storedResults.results should contain(scanResult2)
+            storedResults.size shouldBe 2
+            storedResults should contain(scanResult1)
+            storedResults should contain(scanResult2)
         }
 
         "Can retrieve all scan results for compatible scanners from storage" {
             val storage = createStorage()
             val scanResult = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
             val scanResultCompatible1 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetailsCompatibleVersion1,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceWithSourceArtifact,
+                scannerDetailsCompatibleVersion1,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
             val scanResultCompatible2 = ScanResult(
-                provenanceWithSourceArtifact, scannerDetailsCompatibleVersion2,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceWithSourceArtifact,
+                scannerDetailsCompatibleVersion2,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
             val scanResultIncompatible = ScanResult(
-                provenanceWithSourceArtifact, scannerDetailsIncompatibleVersion,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceWithSourceArtifact,
+                scannerDetailsIncompatibleVersion,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
 
-            val result = storage.add(id, scanResult)
-            val resultCompatible1 = storage.add(id, scanResultCompatible1)
-            val resultCompatible2 = storage.add(id, scanResultCompatible2)
-            val resultIncompatible = storage.add(id, scanResultIncompatible)
+            val result = storage.add(scanResult)
+            val resultCompatible1 = storage.add(scanResultCompatible1)
+            val resultCompatible2 = storage.add(scanResultCompatible2)
+            val resultIncompatible = storage.add(scanResultIncompatible)
             val storedResults = storage.read(pkg, scannerDetails1)
 
             result shouldBe true
             resultCompatible1 shouldBe true
             resultCompatible2 shouldBe true
             resultIncompatible shouldBe true
-            storedResults.results.size shouldBe 3
-            storedResults.results should contain(scanResult)
-            storedResults.results should contain(scanResultCompatible1)
-            storedResults.results should contain(scanResultCompatible2)
+            storedResults.size shouldBe 3
+            storedResults should contain(scanResult)
+            storedResults should contain(scanResultCompatible1)
+            storedResults should contain(scanResultCompatible2)
         }
 
         "Returns only packages with matching provenance" {
             val storage = createStorage()
             val scanResultSourceArtifactMatching = ScanResult(
-                provenanceWithSourceArtifact, scannerDetails1,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceWithSourceArtifact,
+                scannerDetails1,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
             val scanResultVcsMatching = ScanResult(
-                provenanceWithVcsInfo, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithVcsInfo,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
             val provenanceSourceArtifactNonMatching = provenanceWithSourceArtifact.copy(
                 sourceArtifact = sourceArtifact.copy(hash = Hash.create("0123456789012345678901234567890123456789"))
             )
             val scanResultSourceArtifactNonMatching = ScanResult(
-                provenanceSourceArtifactNonMatching, scannerDetails1,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceSourceArtifactNonMatching,
+                scannerDetails1,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
             val provenanceVcsInfoNonMatching = provenanceWithVcsInfo.copy(
-                vcsInfo = vcs.copy(revision = "revision2", resolvedRevision = "resolvedRevision2")
+                vcsInfo = vcs.copy(revision = "revision2", resolvedRevision = "resolvedRevision2"),
+                originalVcsInfo = vcs.copy(revision = "revision2", resolvedRevision = "resolvedRevision2")
             )
             val scanResultVcsInfoNonMatching = ScanResult(
-                provenanceVcsInfoNonMatching, scannerDetails1,
-                scanSummaryWithFiles, rawResultWithContent
+                provenanceVcsInfoNonMatching,
+                scannerDetails1,
+                scanSummaryWithFiles,
+                rawResultWithContent
             )
 
-            val result1 = storage.add(id, scanResultSourceArtifactMatching)
-            val result2 = storage.add(id, scanResultVcsMatching)
-            val result3 = storage.add(id, scanResultSourceArtifactNonMatching)
-            val result4 = storage.add(id, scanResultVcsInfoNonMatching)
+            val result1 = storage.add(scanResultSourceArtifactMatching)
+            val result2 = storage.add(scanResultVcsMatching)
+            val result3 = storage.add(scanResultSourceArtifactNonMatching)
+            val result4 = storage.add(scanResultVcsInfoNonMatching)
             val storedResults = storage.read(pkg, scannerDetails1)
 
             result1 shouldBe true
             result2 shouldBe true
             result3 shouldBe true
             result4 shouldBe true
-            storedResults.results.size shouldBe 2
-            storedResults.results should contain(scanResultSourceArtifactMatching)
-            storedResults.results should contain(scanResultVcsMatching)
+            storedResults.size shouldBe 2
+            storedResults should contain(scanResultSourceArtifactMatching)
+            storedResults should contain(scanResultVcsMatching)
         }
 
         "Stored result is found if revision was detected from version" {
             val storage = createStorage()
             val scanResult = ScanResult(
-                provenanceWithOriginalVcsInfo, scannerDetails1, scanSummaryWithFiles,
+                provenanceWithOriginalVcsInfo,
+                scannerDetails1,
+                scanSummaryWithFiles,
                 rawResultWithContent
             )
 
-            val result = storage.add(id, scanResult)
+            val result = storage.add(scanResult)
             val storedResults = storage.read(pkgWithoutRevision, scannerDetails1)
 
             result shouldBe true
-            storedResults.results.size shouldBe 1
-            storedResults.results should contain(scanResult)
+            storedResults.size shouldBe 1
+            storedResults should contain(scanResult)
         }
     }
 }

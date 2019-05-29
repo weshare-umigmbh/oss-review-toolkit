@@ -249,14 +249,14 @@ abstract class LocalScanner(name: String, config: ScannerConfiguration) : Scanne
         val resultsFile = getResultsFile(scannerDetails, pkg, outputDirectory)
         val storedResults = ScanResultsStorage.read(pkg, scannerDetails)
 
-        if (storedResults.results.isNotEmpty()) {
+        if (storedResults.isNotEmpty()) {
             // Some external tools rely on the raw results filer to be written to the scan results directory, so write
             // the first stored result to resultsFile. This feature will be removed when the reporter tool becomes
             // available.
-            resultsFile.mapper().writeValue(resultsFile, storedResults.results.first().rawResult)
+            resultsFile.mapper().writeValue(resultsFile, storedResults.first().rawResult)
         }
 
-        return storedResults.results
+        return storedResults
     }
 
     /**
@@ -305,7 +305,7 @@ abstract class LocalScanner(name: String, config: ScannerConfiguration) : Scanne
         )
         val scanResult = scanPath(downloadResult.downloadDirectory, resultsFile).copy(provenance = provenance)
 
-        ScanResultsStorage.add(pkg.id, scanResult)
+        ScanResultsStorage.add(scanResult)
 
         return scanResult
     }
