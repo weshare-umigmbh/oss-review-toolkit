@@ -65,8 +65,6 @@ import kotlin.math.absoluteValue
 
 import okhttp3.Request
 
-import okio.Okio
-
 /**
  * A wrapper for [ScanCode](https://github.com/nexB/scancode-toolkit).
  *
@@ -276,20 +274,12 @@ class ScanCode(name: String, config: ScannerConfiguration) : LocalScanner(name, 
                 log.info { "Retrieved $scannerName from local cache." }
             }
 
-            val scannerArchive = createTempFile("ort", "$scannerName-${url.substringAfterLast("/")}")
-            Okio.buffer(Okio.sink(scannerArchive)).use { it.writeAll(body.source()) }
-
             val unpackDir = createTempDir("ort", "$scannerName-$scannerVersion").apply { deleteOnExit() }
 
-            log.info { "Unpacking '$scannerArchive' to '$unpackDir'... " }
-            scannerArchive.unpack(unpackDir)
-            if (!scannerArchive.delete()) {
-                log.warn { "Unable to delete temporary file '$scannerArchive'." }
-            }
+            log.info { "Unpacking '$archive' to '$unpackDir'... " }
+            body.byteStream().unpack(archive, unpackDir)
 
-            val scannerDir = unpackDir.resolve("scancode-toolkit-$scannerVersion")
-
-            scannerDir
+            unpackDir.resolve("scancode-toolkit-$scannerVersion")
         }
     }
 

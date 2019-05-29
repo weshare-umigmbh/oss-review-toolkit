@@ -27,7 +27,6 @@ import com.here.ort.model.ScanResult
 import com.here.ort.model.ScanResultContainer
 import com.here.ort.model.ScannerDetails
 import com.here.ort.model.jsonMapper
-import com.here.ort.model.readValue
 import com.here.ort.model.yamlMapper
 import com.here.ort.utils.OkHttpClientHelper
 import com.here.ort.utils.log
@@ -42,8 +41,6 @@ import okhttp3.CacheControl
 import okhttp3.MediaType
 import okhttp3.Request
 import okhttp3.RequestBody
-
-import okio.Okio
 
 class ArtifactoryStorage(
     /**
@@ -73,22 +70,18 @@ class ArtifactoryStorage(
             .url("$url/$repository/$storagePath")
             .build()
 
-        val tempFile = createTempFile("ort", "scan-results.yml")
-
         try {
             OkHttpClientHelper.execute(HTTP_CACHE_PATH, request).use { response ->
                 if (response.code() == HttpURLConnection.HTTP_OK) {
-                    response.body()?.let { body ->
-                        Okio.buffer(Okio.sink(tempFile)).use { it.writeAll(body.source()) }
-                    }
-
                     if (response.cacheResponse() != null) {
                         log.info { "Retrieved $storagePath from local storage." }
                     } else {
                         log.info { "Downloaded $storagePath from Artifactory storage." }
                     }
 
-                    return tempFile.readValue()
+                    response.body()?.let { body ->
+                        return yamlMapper.readValue(body.byteStream(), ScanResultContainer::class.java)
+                    }
                 } else {
                     log.info {
                         "Could not get $storagePath from Artifactory storage: ${response.code()} - " +
