@@ -29,7 +29,12 @@ const { TabPane } = Tabs;
 // Generates the HTML to display errors related to scanned project
 const SummaryViewTableIssues = (props) => {
     const { data } = props;
-    const { errors, violations } = data;
+    const {
+        errors,
+        errorsTotal,
+        violations,
+        violationsTotal
+    } = data;
 
     const renderErrorTable = errorsData => (
         <Table
@@ -121,6 +126,15 @@ const SummaryViewTableIssues = (props) => {
                     )
                 },
                 {
+                    title: 'Rule',
+                    dataIndex: 'rule',
+                    render: text => (
+                        <span className="ort-rule-id">
+                            {text}
+                        </span>
+                    )
+                },
+                {
                     title: 'Description',
                     dataIndex: 'id',
                     render: (text, row) => (
@@ -138,6 +152,19 @@ const SummaryViewTableIssues = (props) => {
                 }
             ]}
             dataSource={violationsData}
+            expandedRowRender={(record) => {
+                if (!record) {
+                    return (
+                        <span>
+                            No additional data available for this package
+                        </span>
+                    );
+                }
+
+                return (
+                    <div>PLACEHOLDER</div>
+                );
+            }}
             locale={{
                 emptyText: 'No violations'
             }}
@@ -158,32 +185,32 @@ const SummaryViewTableIssues = (props) => {
         />
     );
 
-    if (errors.totalOpen !== 0 || violations.totalOpen !== 0) {
+    if (errorsTotal !== 0 || violationsTotal !== 0) {
         return (
             <Tabs tabPosition="top" className="ort-summary-issues">
                 <TabPane
                     tab={(
                         <span>
                             Violations (
-                            {violations.openTotal}
+                            {violationsTotal}
                             )
                         </span>
                     )}
                     key="1"
                 >
-                    {renderViolationsTable(violations.open)}
+                    {renderViolationsTable(violations)}
                 </TabPane>
                 <TabPane
                     tab={(
                         <span>
                             Errors (
-                            {errors.openTotal}
+                            {errorsTotal}
                             )
                         </span>
                     )}
                     key="2"
                 >
-                    {renderErrorTable(errors.open)}
+                    {renderErrorTable(errors)}
                 </TabPane>
             </Tabs>
         );

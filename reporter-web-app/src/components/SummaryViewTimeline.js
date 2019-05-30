@@ -37,14 +37,15 @@ const SummaryViewTimeline = (props) => {
         repository
     } = props;
 
-    const { errors, violations } = issues;
+    const {
+        errorsTotal: errorsOpenTotal,
+        violationsTotal: violationsOpenTotal
+    } = issues;
 
     if (repository && repository.vcs && repository.vcs_processed) {
         return (<Alert message="No repository information available" type="error" />);
     }
 
-    const { openTotal: errorsOpenTotal } = errors;
-    const { openTotal: violationsOpenTotal } = violations;
     const { declaredTotal: licensesDeclaredTotal, detectedTotal: licensesDetectedTotal } = licenses;
     const renderLicensesText = () => {
         if (licensesDetectedTotal === 0) {

@@ -36,13 +36,12 @@ function* convertReportData() {
     const projects = {};
     const declaredLicensesFromAnalyzer = {};
     const detectedLicensesFromScanner = {};
-    const reportDataOpenErrors = {};
-    const reportDataResolvedErrors = {};
+    const reportDataErrors = {};
     let reportDataLevels = new Set([]);
     let reportDataScopes = new Set([]);
 
     // Add `key` to prevent warning rendering table with two children with same key
-    const addKeyToArrayItems = arr => arr.map((item, index) => {
+    const addKeyToEachArrayItem = arr => arr.map((item, index) => {
         const tmp = item;
         tmp.key = index;
         return tmp;
@@ -83,7 +82,7 @@ function* convertReportData() {
                 const error = errors[i];
 
                 if (error.severity === 'ERROR') {
-                    if (!reportDataOpenErrors[`${pkg.id}-errors`]) {
+                    if (!reportDataErrors[`${pkg.id}-errors`]) {
                         summaryPkgErrorObj = {
                             source: pkg.id,
                             severity: 'ERROR',
@@ -91,15 +90,15 @@ function* convertReportData() {
                             message: new Set([])
                         };
                     } else {
-                        summaryPkgErrorObj = reportDataOpenErrors[`${pkg.id}-errors`];
+                        summaryPkgErrorObj = reportDataErrors[`${pkg.id}-errors`];
                     }
 
                     summaryPkgErrorObj.files.add(error.file);
                     summaryPkgErrorObj.message.add(error.message);
 
-                    reportDataOpenErrors[`${pkg.id}-errors`] = summaryPkgErrorObj;
+                    reportDataErrors[`${pkg.id}-errors`] = summaryPkgErrorObj;
                 } else {
-                    if (!reportDataOpenErrors[`${pkg.id}-warnings`]) {
+                    if (!reportDataErrors[`${pkg.id}-warnings`]) {
                         summaryPkgWarningObj = {
                             source: pkg.id,
                             severity: 'WARNING',
@@ -107,13 +106,13 @@ function* convertReportData() {
                             message: new Set([])
                         };
                     } else {
-                        summaryPkgWarningObj = reportDataOpenErrors[`${pkg.id}-warnings`];
+                        summaryPkgWarningObj = reportDataErrors[`${pkg.id}-warnings`];
                     }
 
                     summaryPkgWarningObj.files.add(error.file);
                     summaryPkgWarningObj.message.add(error.message);
 
-                    reportDataOpenErrors[`${pkg.id}-warnings`] = summaryPkgWarningObj;
+                    reportDataErrors[`${pkg.id}-warnings`] = summaryPkgWarningObj;
                 }
             }
         }
@@ -681,11 +680,7 @@ function* convertReportData() {
 
     const convertedData = {
         hasErrors: reportData.has_errors || false,
-        errors: {
-            // Flatten errors into an array of errors
-            resolved: addKeyToArrayItems(Object.values(reportDataResolvedErrors)) || [],
-            open: addKeyToArrayItems(Object.values(reportDataOpenErrors)) || []
-        },
+        errors: addKeyToEachArrayItem(Object.values(reportDataErrors)) || [],
         levels: reportDataLevels || new Set(),
         licenses: {
             declared: declaredLicensesFromAnalyzer,
@@ -700,11 +695,8 @@ function* convertReportData() {
         projects,
         scopes: reportDataScopes || new Set(),
         repository: reportData.repository || {},
-        violations: {
-            resolved: addKeyToArrayItems([]),
-            open: (reportData.evaluator && reportData.evaluator.violations)
-                ? addKeyToArrayItems(reportData.evaluator.violations) : []
-        }
+        violations: (reportData.evaluator && reportData.evaluator.violations)
+            ? addKeyToEachArrayItem(reportData.evaluator.violations) : []
     };
 
     yield put({ type: 'APP::LOADING_CONVERTING_REPORT_DONE', payload: convertedData });
