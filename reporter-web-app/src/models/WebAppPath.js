@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,19 +17,30 @@
  * License-Filename: LICENSE
  */
 
-import React from 'react';
-import PropTypes from 'prop-types';
+class WebAppPath {
+    #pkg = '';
 
-const expandablePanelContent = (props) => {
-    const { children } = props;
+    #scope = '';
 
-    return (
-        <div>{children}</div>
-    );
-};
+    constructor(obj) {
+        if (obj) {
+            if (obj.pkg) {
+                this.#pkg = obj.pkg;
+            }
 
-expandablePanelContent.propTypes = {
-    children: PropTypes.node.isRequired
-};
+            if (obj.scope) {
+                this.#scope = obj.scope;
+            }
+        }
+    }
 
-export default expandablePanelContent;
+    get pkg() {
+        return this.#pkg;
+    }
+
+    get scope() {
+        return this.#scope;
+    }
+}
+
+export default WebAppPath;
