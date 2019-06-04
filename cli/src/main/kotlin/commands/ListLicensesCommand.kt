@@ -86,6 +86,7 @@ object ListLicensesCommand : CommandWithHelp() {
         }
 
         val violatingLicenses = ortResult.evaluator!!.violations.filter { it.severity == Severity.ERROR }.mapNotNull { it.license }
+        val blacklistedLicenses = ortResult.evaluator!!.violations.filter { it.rule == "BLACKLISTED_LICENSE" }.mapNotNull { it.license }.toSet()
 
         val provenanceFindings = mutableMapOf<Provenance, MutableMap<String, MutableSet<TextLocation>>>()
         ortResult.scanner!!.results.scanResults.forEach { container ->
@@ -117,7 +118,7 @@ object ListLicensesCommand : CommandWithHelp() {
                 appendln("")
                 val licenses = packageFindings[id]!!
                 licenses.keys.sorted().forEach { license ->
-                    val relevantFindings = licenses[license]!!.filter { !(omitExcluded && isExcluded(it.path)) && violatingLicenses.contains(license) }
+                    val relevantFindings = licenses[license]!!.filter { (!(omitExcluded && isExcluded(it.path)) || license in blacklistedLicenses) && violatingLicenses.contains(license) }
 
                     val distinctFindings = getDistinctFindings(relevantFindings)
 
