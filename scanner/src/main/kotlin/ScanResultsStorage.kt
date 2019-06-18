@@ -28,7 +28,11 @@ import com.here.ort.model.ScanResult
 import com.here.ort.model.ScanResultContainer
 import com.here.ort.model.ScannerDetails
 import com.here.ort.model.config.ArtifactoryStorageConfiguration
+import com.here.ort.model.config.PostgresStorageConfiguration
+import com.here.ort.model.config.ScannerConfiguration
 import com.here.ort.utils.log
+import java.sql.DriverManager
+import java.util.Properties
 
 import java.util.SortedSet
 
@@ -44,7 +48,16 @@ interface ScanResultsStorage {
 
         val stats = AccessStatistics()
 
-        fun configure(config: ArtifactoryStorageConfiguration) {
+        fun configure(config: ScannerConfiguration) {
+            require(config.artifactoryStorage == null || config.postgresStorage == null) {
+                "Can only use one scan results storage backend, but both Artifactory and PostgreSQL are configured."
+            }
+
+            config.artifactoryStorage?.let { configure(it) }
+            config.postgresStorage?.let { configure(it) }
+        }
+
+        private fun configure(config: ArtifactoryStorageConfiguration) {
             require(config.url.isNotBlank()) {
                 "URL for Artifactory storage is missing."
             }
@@ -60,6 +73,34 @@ interface ScanResultsStorage {
             storage = ArtifactoryStorage(config.url, config.repository, config.apiToken)
 
             log.info { "Using Artifactory storage at ${config.url}." }
+        }
+
+        private fun configure(config: PostgresStorageConfiguration) {
+            require(config.url.isNotBlank()) {
+                "URL for PostgreSQL storage is missing."
+            }
+
+            require(config.schema.isNotBlank()) {
+                "Database for PostgreSQL storage is missing."
+            }
+
+            require(config.username.isNotBlank()) {
+                "Username for PostgreSQL storage is missing."
+            }
+
+            require(config.password.isNotBlank()) {
+                "Password for PostgreSQL storage is missing."
+            }
+
+            val properties = Properties()
+            properties["user"] = config.username
+            properties["password"] = config.password
+//            properties["ssl"] = "true"
+//            properties["sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory"]
+
+            val connection = DriverManager.getConnection(config.url, properties)
+
+            storage = PostgresStorage(connection, config.schema).also { it.init() }
         }
 
         override fun read(id: Identifier) =

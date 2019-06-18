@@ -34,9 +34,8 @@ import java.io.IOException
 import java.sql.Connection
 import java.util.SortedSet
 
-class PostgresStorage(val connection: Connection) : ScanResultsStorage {
-    val schema = "public"
-    val table = "scan_results"
+class PostgresStorage(val connection: Connection, val schema: String) : ScanResultsStorage {
+    val table = "scan_results" // TODO: make configurable
 
     /**
      * Initialize the database.
@@ -87,10 +86,12 @@ class PostgresStorage(val connection: Connection) : ScanResultsStorage {
     }
 
     override fun read(id: Identifier): ScanResultContainer {
+        log.info { "Reading scan results for ${id.toCoordinates()} from storage." }
+
         val query = "SELECT scan_result FROM $schema.$table WHERE identifier = ?"
 
         val statement = connection.prepareStatement(query)
-        statement.setString(1, id.toString())
+        statement.setString(1, id.toCoordinates())
 
         val resultSet = statement.executeQuery()
 
@@ -101,6 +102,8 @@ class PostgresStorage(val connection: Connection) : ScanResultsStorage {
             results.add(scanResult)
         }
 
+        log.info { "Found ${results.size} scan results for ${id.toCoordinates()}." }
+
         return ScanResultContainer(id, results)
     }
 
@@ -110,6 +113,8 @@ class PostgresStorage(val connection: Connection) : ScanResultsStorage {
         // TODO: This filtering should be done in the database query for better performance.
         scanResults.retainAll { it.provenance.matches(pkg) }
         scanResults.retainAll { scannerDetails.isCompatible(it.scanner) }
+
+        log.info { "Found ${scanResults.size} matching scan results for ${pkg.id.toCoordinates()}." }
 
         return ScanResultContainer(pkg.id, scanResults)
     }
@@ -141,11 +146,13 @@ class PostgresStorage(val connection: Connection) : ScanResultsStorage {
             return false
         }
 
+        log.info { "Storing scan result for ${id.toCoordinates()} in storage." }
+
         // TODO: Check if there is already a matching entry for this provenance and scanner details.
         val query = "INSERT INTO $schema.$table (identifier, scan_result) VALUES (?, to_json(?::json)::jsonb)"
 
         val statement = connection.prepareStatement(query)
-        statement.setString(1, id.toString())
+        statement.setString(1, id.toCoordinates())
         statement.setString(2, jsonMapper.writeValueAsString(scanResult))
         statement.execute()
 

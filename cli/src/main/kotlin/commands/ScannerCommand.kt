@@ -153,9 +153,10 @@ object ScannerCommand : CommandWithHelp() {
             it.readValue<ScannerConfiguration>()
         } ?: ScannerConfiguration()
 
-        config.artifactoryStorage?.let {
-            ScanResultsStorage.configure(it)
-        }
+        ScanResultsStorage.configure(config)
+//        config.artifactoryStorage?.let {
+//            ScanResultsStorage.configure(it)
+//        }
 
         val scanner = scannerFactory.create(config)
 
