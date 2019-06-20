@@ -1,5 +1,5 @@
 pipeline {
-    agent none
+    agent any
 
     parameters {
         string(
@@ -30,35 +30,18 @@ pipeline {
         }
 
         stage('Build ORT distribution') {
-            agent {
-                dockerfile {
-                    dir 'docker/build'
-                    args '-v $HOME/.gradle:/root/.gradle'
-                }
-            }
-
             steps {
-                sh './gradlew --no-daemon :cli:distTar'
-            }
-        }
-
-        stage('Build Docker image') {
-            agent any
-
-            steps {
-                sh './gradlew --no-daemon :cli:dockerBuildImage'
+                sh 'docker/build.sh'
             }
         }
 
         stage('Run ORT analyzer') {
-            agent any
-
             steps {
                 // Remove any previous results.
-                sh 'rm -fr ${WORKSPACE}/project/ort'
+                //sh 'rm -fr ${WORKSPACE}/project/ort'
 
                 // Run the analyzer.
-                sh "docker run --rm -v ${WORKSPACE}/project:/app/project ort --info analyze -i project -o /app/project/ort/analyze"
+                sh "docker/run.sh '-v ${WORKSPACE}/project:/app/project' '--info analyze -i project -o /app/project/ort/analyze'"
             }
 
             post {
