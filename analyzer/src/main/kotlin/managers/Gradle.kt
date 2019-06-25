@@ -214,19 +214,24 @@ class Gradle(
         repositories: List<RemoteRepository>
     ): PackageReference {
         val issues = mutableListOf<OrtIssue>()
+        val versionX: String? = dependency.version
+        val version: String = versionX ?: ""
+        if (versionX == null) {
+            log.debug { "dep with version = null '$dependency' groupId:'${dependency.groupId}' artifactId:'${dependency.artifactId}' classifier:'${dependency.classifier}' extension:'${dependency.extension}' pomFile:'${dependency.pomFile}' localPath:'${dependency.localPath}'" }
+        }
 
         dependency.error?.let { issues += OrtIssue(source = managerName, message = it, severity = Severity.ERROR) }
         dependency.warning?.let { issues += OrtIssue(source = managerName, message = it, severity = Severity.WARNING) }
 
         // Only look for a package if there was no error resolving the dependency and it is no project dependency.
         if (dependency.error == null && dependency.localPath == null) {
-            val identifier = "${dependency.groupId}:${dependency.artifactId}:${dependency.version}"
+            val identifier = "${dependency.groupId}:${dependency.artifactId}:${version}"
 
             packages.getOrPut(identifier) {
                 try {
                     val artifact = DefaultArtifact(
                         dependency.groupId, dependency.artifactId, dependency.classifier,
-                        dependency.extension, dependency.version
+                        dependency.extension, version
                     )
 
                     maven.parsePackage(artifact, repositories)
@@ -244,7 +249,7 @@ class Gradle(
                             type = "Maven",
                             namespace = dependency.groupId,
                             name = dependency.artifactId,
-                            version = dependency.version
+                            version = version
                         )
                     )
                 }
@@ -254,11 +259,11 @@ class Gradle(
         val transitiveDependencies = dependency.dependencies.map { parseDependency(it, packages, repositories) }
 
         return if (dependency.localPath != null) {
-            val id = Identifier(managerName, dependency.groupId, dependency.artifactId, dependency.version)
+            val id = Identifier(managerName, dependency.groupId, dependency.artifactId, version)
             PackageReference(id, PackageLinkage.PROJECT_DYNAMIC, transitiveDependencies.toSortedSet(), issues)
         } else {
             val type = dependency.pomFile?.let { "Maven" } ?: "Unknown"
-            val id = Identifier(type, dependency.groupId, dependency.artifactId, dependency.version)
+            val id = Identifier(type, dependency.groupId, dependency.artifactId, version)
             PackageReference(id, dependencies = transitiveDependencies.toSortedSet(), errors = issues)
         }
     }
